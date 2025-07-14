@@ -115,23 +115,26 @@ export default function ManageUsers({ token, notify }) {
       <Tabs
         value={userTab}
         onChange={(_, v) => setUserTab(v)}
+        variant="scrollable"
+        scrollButtons="auto"
+        TabIndicatorProps={{ style: { background: '#c94c1c' } }}
         sx={{
           mb: 2,
           '& .MuiTab-root': {
-            transition: 'background 0.2s, color 0.2s',
-            borderRadius: 2,
+            minWidth: 180,
             fontWeight: 700,
-            fontSize: 16,
-            px: 3,
-            py: 1.5,
+            color: '#f15a24',
+            bgcolor: 'background.paper',
+            borderRadius: 2,
+            mx: 1,
             '&:hover': {
-              bgcolor: 'secondary.main',
-              color: 'primary.contrastText',
+              bgcolor: '#c94c1c',
+              color: '#fff',
             },
           },
           '& .Mui-selected': {
-            bgcolor: 'secondary.main',
-            color: 'primary.contrastText',
+            bgcolor: '#f15a24',
+            color: '#fff',
           },
         }}
       >

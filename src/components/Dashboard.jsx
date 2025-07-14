@@ -37,6 +37,55 @@ import { LineChart, Line } from 'recharts';
 import InfoIcon from '@mui/icons-material/Info';
 
 export default function Dashboard({ user, setUser }) {
+  // Advanced form state (independent)
+  const [advForm, setAdvForm] = useState({ topic: '', words: '', prompt: '' });
+
+  // Advanced content generation handler (uses advForm only)
+  const handleGenerateAdvanced = async (isRegenerate = false) => {
+    if (!selectedClient || !(advForm.topic && advForm.topic.trim()) || !(advForm.words && Number(advForm.words) > 0) || !(advForm.prompt && advForm.prompt.trim())) {
+      setValidation('Please select a client and enter topic, word count, and a custom prompt.');
+      return;
+    }
+    setLoading(true);
+    setMessage(isRegenerate ? 'Regenerating...' : 'Generating...');
+    setContent('');
+    try {
+      await fetch('/api/content/track-usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+        body: JSON.stringify({ type: isRegenerate ? 'regeneration' : 'generation' })
+      });
+      const advPrompt = advForm.prompt
+        .replace(/mention topic/gi, advForm.topic)
+        .replace(/500-word|\d+-word/gi, `${advForm.words}-word`);
+      // Send all required fields to backend
+      const res = await fetch('/api/content/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+        body: JSON.stringify({
+          clientId: selectedClient,
+          title: advForm.topic,
+          keywords: [], // Advanced mode: no keywords field, send empty array
+          length: Number(advForm.words),
+          type: 'blog', // Default to blog, or could add a dropdown for type
+          headings: 1, // Default to 1 heading, or could add a field for this
+          prompt: advPrompt
+        })
+      });
+      const data = await res.json();
+      setLoading(false);
+      if (!res.ok) {
+        setMessage(data.message || data.error || 'OpenAI error');
+        return;
+      }
+      setContent(data.generatedContent);
+      setMessage('');
+    } catch (err) {
+      setLoading(false);
+      setMessage('Network or server error');
+    }
+  };
+  const [contentTab, setContentTab] = useState(0);
   // Acknowledgement dialog state
   const [ackOpen, setAckOpen] = useState(() => {
     // Only show once per session
@@ -49,7 +98,13 @@ export default function Dashboard({ user, setUser }) {
   };
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState('');
-  const [form, setForm] = useState({ title: '', keywords: '', length: 500, type: 'blog', headings: 3 });
+  const [form, setForm] = useState({
+    title: '',
+    keywords: '',
+    length: 500,
+    type: 'blog',
+    headings: 3
+  });
   const [content, setContent] = useState('');
   const [message, setMessage] = useState('');
   const [logs, setLogs] = useState([]);
@@ -69,9 +124,31 @@ export default function Dashboard({ user, setUser }) {
   const [bugMsg, setBugMsg] = useState('');
   const [featureMsg, setFeatureMsg] = useState('');
   const [bugImages, setBugImages] = useState([]);
-  // Local state for active requests (frontend only)
-  const [activeRequests, setActiveRequests] = useState([]);
-  const [resolvedRequests, setResolvedRequests] = useState([]);
+  // Local state for active requests (frontend only, persist in localStorage)
+  const [activeRequests, setActiveRequests] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem('activeRequests');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [resolvedRequests, setResolvedRequests] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem('resolvedRequests');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Persist requests to localStorage on change
+  useEffect(() => {
+    window.localStorage.setItem('activeRequests', JSON.stringify(activeRequests));
+  }, [activeRequests]);
+  useEffect(() => {
+    window.localStorage.setItem('resolvedRequests', JSON.stringify(resolvedRequests));
+  }, [resolvedRequests]);
   const [activeTab, setActiveTab] = useState(0); // 0: Pending, 1: Resolved
 
   // Helper to get user info for requests
@@ -246,9 +323,9 @@ export default function Dashboard({ user, setUser }) {
           </DialogActions>
         </Dialog>
         {/* Sidebar AppBar (vertical navigation) */}
-      <AppBar position="static" color="primary" sx={{ width: 240, minWidth: 240, height: '92vh', maxHeight: '100vh', borderTopRightRadius: 16, borderBottomRightRadius: 16, boxShadow: 4, alignItems: 'flex-start', justifyContent: 'flex-start', pt: 7, bgcolor: 'primary.main', color: 'primary.contrastText', marginTop: 4 }}>
-        <Toolbar sx={{ flexDirection: 'column', alignItems: 'flex-start', width: '100%', p: 0, minHeight: '100vh', maxHeight: '100vh', gap: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 1, mb: 1, color: 'primary.contrastText', textAlign: 'left', width: '100%' }}>
+      <AppBar position="static" sx={{ width: 240, minWidth: 240, height: '92vh', maxHeight: '100vh', borderTopRightRadius: 16, borderBottomRightRadius: 16, boxShadow: 4, alignItems: 'flex-start', justifyContent: 'flex-start', pt: 7, bgcolor: '#f15a24', color: '#fff', marginTop: 4 }}>
+        <Toolbar sx={{ flexDirection: 'column', alignItems: 'flex-start', width: '100%', p: 0, minHeight: '100vh', maxHeight: '100vh', gap: 2, bgcolor: '#f15a24', color: '#fff' }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 1, mb: 1, color: '#fff', textAlign: 'left', width: '100%' }}>
             Echo5Digital Content Generator
           </Typography>
           <Tabs
@@ -256,24 +333,24 @@ export default function Dashboard({ user, setUser }) {
             value={tab}
             onChange={(_, v) => setTab(v)}
             textColor="inherit"
-            indicatorColor="secondary"
-            sx={{ minWidth: 200, width: '100%', bgcolor: 'primary.main', color: 'primary.contrastText',
+            TabIndicatorProps={{ style: { background: '#c94c1c' } }}
+            sx={{ minWidth: 200, width: '100%', bgcolor: '#f15a24', color: '#fff',
               '& .MuiTab-root': {
                 transition: 'background 0.2s, color 0.2s',
                 borderRadius: 2,
                 '&:hover': {
-                  bgcolor: 'secondary.main',
-                  color: 'primary.contrastText',
+                  bgcolor: '#c94c1c',
+                  color: '#fff',
                 },
               },
               '& .Mui-selected': {
-                bgcolor: 'secondary.main',
-                color: 'primary.contrastText',
+                bgcolor: '#c94c1c',
+                color: '#fff',
               },
             }}
           >
             {visibleTabs.map((t, i) => (
-              <Tab key={t.label} icon={t.icon} iconPosition="start" label={t.label} sx={{ minHeight: 56, minWidth: 200, maxWidth: 200, justifyContent: 'flex-start', fontWeight: 600, color: 'primary.contrastText' }} />
+              <Tab key={t.label} icon={t.icon} iconPosition="start" label={t.label} sx={{ minHeight: 56, minWidth: 200, maxWidth: 200, justifyContent: 'flex-start', fontWeight: 600, color: '#fff', '&.Mui-selected': { color: '#fff' } }} />
             ))}
           </Tabs>
         </Toolbar>
@@ -384,68 +461,219 @@ export default function Dashboard({ user, setUser }) {
             <Box>
               <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: 'background.paper', borderRadius: 3, width: '100%', minWidth: 824, maxWidth: 824, minHeight: 400, maxHeight: 700, height: 600, overflow: 'auto', color: 'text.primary', boxSizing: 'border-box' }}>
                 <Typography variant="h5" sx={{ mb: 3, color: 'text.primary', fontWeight: 800, letterSpacing: 0.5, textShadow: '0 1px 8px #2228' }}>Content Generation</Typography>
-                <ContentFormFields
-                  form={form}
-                  onChange={handleChange}
-                  selectedClient={selectedClient}
-                  setSelectedClient={setSelectedClient}
-                  clients={clients}
-                />
-                <Box mt={2} display="flex" gap={2}>
-                  <Button onClick={() => handleGenerate(false)} disabled={loading} variant="contained" sx={{ bgcolor: 'secondary.main', color: 'primary.contrastText', fontWeight: 600, '&:hover': { bgcolor: 'secondary.dark', color: 'primary.contrastText' } }}>Generate</Button>
-                  <Button onClick={() => handleGenerate(true)} disabled={loading} variant="outlined" sx={{ borderColor: 'secondary.main', color: 'secondary.main', fontWeight: 600, '&:hover': { bgcolor: 'secondary.main', color: 'primary.contrastText', borderColor: 'secondary.dark' } }}>Regenerate</Button>
-                </Box>
-                {validation && <Alert severity="warning" sx={{ mt: 2 }}>{validation}</Alert>}
-                {loading && <CircularProgress sx={{ mt: 2 }} />}
-                {message && <Alert severity={message === 'Saved!' ? 'success' : 'info'} sx={{ mt: 2 }}>{message}</Alert>}
-                <Dialog open={!!content} onClose={() => setContent('')} maxWidth="md" fullWidth>
-                  <DialogTitle 
-                    sx={{ fontWeight: 700, color: 'primary.main', textAlign: 'center', px: 4, pt: 3, pb: 2, bgcolor: 'background.paper', borderTopLeftRadius: 8, borderTopRightRadius: 8, position: 'relative' }}
-                  >
-                    Generated Content
-                    <IconButton
-                      aria-label="close"
-                      onClick={() => setContent('')}
-                      sx={{
-                        position: 'absolute',
-                        right: 12,
-                        top: 12,
-                        color: (theme) => theme.palette.grey[500],
-                        bgcolor: 'transparent',
-                        '&:hover': { bgcolor: 'grey.800', color: 'primary.contrastText' },
-                        zIndex: 1
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </IconButton>
-                  </DialogTitle>
-                  <DialogContent 
-                    dividers 
-                    sx={{ 
-                      maxHeight: { xs: '70vh', md: '60vh' }, 
-                      minWidth: { xs: 320, sm: 500, md: 700 },
-                      bgcolor: 'background.default',
-                      p: { xs: 2, sm: 3 },
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'flex-start',
-                      borderBottomLeftRadius: 8, 
-                      borderBottomRightRadius: 8,
+                <Tabs value={contentTab} onChange={(_, v) => setContentTab(v)} sx={{ mb: 2 }}>
+                  <Tab 
+                    label="Easy" 
+                    sx={{
+                      minWidth: 120,
+                      fontWeight: 700,
+                      fontSize: 18,
+                      color: contentTab === 0 ? 'primary.contrastText' : 'secondary.main',
+                      bgcolor: contentTab === 0 ? 'secondary.main' : 'background.paper',
+                      borderRadius: 2,
+                      mx: 1,
+                      boxShadow: contentTab === 0 ? 2 : 0,
+                      transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
+                      '&:hover': {
+                        bgcolor: 'secondary.dark',
+                        color: 'primary.contrastText',
+                        boxShadow: 3,
+                      },
                     }}
-                  >
-                    <Box sx={{ width: '100%', maxWidth: 650 }}>
-                      <GeneratedContentDisplay
-                        content={content}
-                        onSave={handleSave}
-                        rows={8}
-                      />
+                  />
+                  <Tab 
+                    label="Advanced" 
+                    sx={{
+                      minWidth: 120,
+                      fontWeight: 700,
+                      fontSize: 18,
+                      color: contentTab === 1 ? 'primary.contrastText' : 'secondary.main',
+                      bgcolor: contentTab === 1 ? 'secondary.main' : 'background.paper',
+                      borderRadius: 2,
+                      mx: 1,
+                      boxShadow: contentTab === 1 ? 2 : 0,
+                      transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
+                      '&:hover': {
+                        bgcolor: 'secondary.dark',
+                        color: 'primary.contrastText',
+                        boxShadow: 3,
+                      },
+                    }}
+                  />
+                </Tabs>
+                {contentTab === 0 && (
+                  <>
+                    <ContentFormFields
+                      form={form}
+                      onChange={handleChange}
+                      selectedClient={selectedClient}
+                      setSelectedClient={setSelectedClient}
+                      clients={clients}
+                    />
+                    <Box mt={2} display="flex" gap={2}>
+                      <Button onClick={() => handleGenerate(false)} disabled={loading} variant="contained" sx={{ bgcolor: 'secondary.main', color: 'primary.contrastText', fontWeight: 600, '&:hover': { bgcolor: 'secondary.dark', color: 'primary.contrastText' } }}>Generate</Button>
+                      <Button onClick={() => handleGenerate(true)} disabled={loading} variant="outlined" sx={{ borderColor: 'secondary.main', color: 'secondary.main', fontWeight: 600, '&:hover': { bgcolor: 'secondary.main', color: 'primary.contrastText', borderColor: 'secondary.dark' } }}>Regenerate</Button>
                     </Box>
-                  </DialogContent>
-                  <DialogActions sx={{ justifyContent: 'center', pb: 2, pt: 2, bgcolor: 'background.paper', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
-                    <Button onClick={() => setContent('')} variant="outlined" color="primary" sx={{ minWidth: 120, fontWeight: 700, borderRadius: 2 }}>Close</Button>
-                  </DialogActions>
-                </Dialog>
+                    {validation && <Alert severity="warning" sx={{ mt: 2 }}>{validation}</Alert>}
+                    {loading && <CircularProgress sx={{ mt: 2 }} />}
+                    {message && <Alert severity={message === 'Saved!' ? 'success' : 'info'} sx={{ mt: 2 }}>{message}</Alert>}
+                    <Dialog open={!!content} onClose={() => setContent('')} maxWidth="md" fullWidth>
+                      <DialogTitle 
+                        sx={{ fontWeight: 700, color: 'primary.main', textAlign: 'center', px: 4, pt: 3, pb: 2, bgcolor: 'background.paper', borderTopLeftRadius: 8, borderTopRightRadius: 8, position: 'relative' }}
+                      >
+                        Generated Content
+                        <IconButton
+                          aria-label="close"
+                          onClick={() => setContent('')}
+                          sx={{
+                            position: 'absolute',
+                            right: 12,
+                            top: 12,
+                            color: (theme) => theme.palette.grey[500],
+                            bgcolor: 'transparent',
+                            '&:hover': { bgcolor: 'grey.800', color: 'primary.contrastText' },
+                            zIndex: 1
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </IconButton>
+                      </DialogTitle>
+                      <DialogContent 
+                        dividers 
+                        sx={{ 
+                          maxHeight: { xs: '70vh', md: '60vh' }, 
+                          minWidth: { xs: 320, sm: 500, md: 700 },
+                          bgcolor: 'background.default',
+                          p: { xs: 2, sm: 3 },
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          borderBottomLeftRadius: 8, 
+                          borderBottomRightRadius: 8,
+                        }}
+                      >
+                        <Box sx={{ width: '100%', maxWidth: 650 }}>
+                          <GeneratedContentDisplay
+                            content={content}
+                            onSave={handleSave}
+                            rows={8}
+                          />
+                        </Box>
+                      </DialogContent>
+                      <DialogActions sx={{ justifyContent: 'center', pb: 2, pt: 2, bgcolor: 'background.paper', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
+                        <Button onClick={() => setContent('')} variant="outlined" color="primary" sx={{ minWidth: 120, fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                      </DialogActions>
+                    </Dialog>
+                  </>
+                )}
+                {contentTab === 1 && (
+                  <Box>
+                    <Box display="flex" flexDirection="column" gap={2} maxWidth={600} mx="auto">
+                      {/* Client selection dropdown (always visible in Advanced tab) */}
+                      <FormControl fullWidth variant="outlined" sx={{ mb: 1 }}>
+                        <InputLabel id="adv-client-label">Select Client</InputLabel>
+                        <Select
+                          labelId="adv-client-label"
+                          value={selectedClient}
+                          onChange={e => setSelectedClient(e.target.value)}
+                          label="Select Client"
+                        >
+                          <MenuItem value=""><em>None</em></MenuItem>
+                          {clients.map(client => (
+                            <MenuItem key={client._id} value={client._id}>{client.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        label="Topic"
+                        name="topic"
+                        value={advForm.topic}
+                        onChange={e => setAdvForm(f => ({ ...f, topic: e.target.value }))}
+                        fullWidth
+                        variant="outlined"
+                        sx={{ mb: 1 }}
+                      />
+                      <TextField
+                        label="Word Count"
+                        name="words"
+                        type="number"
+                        value={advForm.words}
+                        onChange={e => setAdvForm(f => ({ ...f, words: e.target.value }))}
+                        fullWidth
+                        variant="outlined"
+                        sx={{ mb: 1 }}
+                      />
+                      <TextField
+                        label="Custom Prompt"
+                        name="prompt"
+                        value={advForm.prompt}
+                        onChange={e => setAdvForm(f => ({ ...f, prompt: e.target.value }))}
+                        fullWidth
+                        multiline
+                        minRows={4}
+                        variant="outlined"
+                        placeholder={`Please write a 500-word blog post on 'mention topic'\nUse a professional tone and mimic the natural writing style of a industry expert. Incorporate varied sentence structures, subtle imperfections, and organic flow to emulate human writing. Include specific details, examples, or anecdotes relevant to the topic, and avoid overly polished or formulaic language. Ensure the content is 100% original, with no direct quotes or paraphrasing from existing sources. If applicable, use APA for formatting. Optionally, add a touch of curiosity to make the writing feel authentic and engaging.`}
+                        sx={{ mb: 1 }}
+                      />
+                      <Box mt={1} display="flex" gap={2}>
+                        <Button onClick={() => handleGenerateAdvanced(false)} disabled={loading} variant="contained" sx={{ bgcolor: 'secondary.main', color: 'primary.contrastText', fontWeight: 600, '&:hover': { bgcolor: 'secondary.dark', color: 'primary.contrastText' } }}>Generate</Button>
+                        <Button onClick={() => handleGenerateAdvanced(true)} disabled={loading} variant="outlined" sx={{ borderColor: 'secondary.main', color: 'secondary.main', fontWeight: 600, '&:hover': { bgcolor: 'secondary.main', color: 'primary.contrastText', borderColor: 'secondary.dark' } }}>Regenerate</Button>
+                      </Box>
+                      {validation && <Alert severity="warning" sx={{ mt: 2 }}>{validation}</Alert>}
+                      {loading && <CircularProgress sx={{ mt: 2 }} />}
+                      {message && <Alert severity={message === 'Saved!' ? 'success' : 'info'} sx={{ mt: 2 }}>{message}</Alert>}
+                    </Box>
+                    <Dialog open={!!content} onClose={() => setContent('')} maxWidth="md" fullWidth>
+                      <DialogTitle 
+                        sx={{ fontWeight: 700, color: 'primary.main', textAlign: 'center', px: 4, pt: 3, pb: 2, bgcolor: 'background.paper', borderTopLeftRadius: 8, borderTopRightRadius: 8, position: 'relative' }}
+                      >
+                        Generated Content
+                        <IconButton
+                          aria-label="close"
+                          onClick={() => setContent('')}
+                          sx={{
+                            position: 'absolute',
+                            right: 12,
+                            top: 12,
+                            color: (theme) => theme.palette.grey[500],
+                            bgcolor: 'transparent',
+                            '&:hover': { bgcolor: 'grey.800', color: 'primary.contrastText' },
+                            zIndex: 1
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </IconButton>
+                      </DialogTitle>
+                      <DialogContent 
+                        dividers 
+                        sx={{ 
+                          maxHeight: { xs: '70vh', md: '60vh' }, 
+                          minWidth: { xs: 320, sm: 500, md: 700 },
+                          bgcolor: 'background.default',
+                          p: { xs: 2, sm: 3 },
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          borderBottomLeftRadius: 8, 
+                          borderBottomRightRadius: 8,
+                        }}
+                      >
+                        <Box sx={{ width: '100%', maxWidth: 650 }}>
+                          <GeneratedContentDisplay
+                            content={content}
+                            onSave={handleSave}
+                            rows={8}
+                          />
+                        </Box>
+                      </DialogContent>
+                      <DialogActions sx={{ justifyContent: 'center', pb: 2, pt: 2, bgcolor: 'background.paper', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
+                        <Button onClick={() => setContent('')} variant="outlined" color="primary" sx={{ minWidth: 120, fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                      </DialogActions>
+                    </Dialog>
+                  </Box>
+                )}
               </Paper>
             </Box>
           )}
@@ -543,7 +771,13 @@ export default function Dashboard({ user, setUser }) {
                       Submit a Bug Report
                     </Typography>
                     <BugReportForm
-                      onSubmit={bug => setActiveRequests(prev => [bug, ...prev])}
+                      onSubmit={bug => {
+                        setActiveRequests(prev => {
+                          const updated = [bug, ...prev];
+                          window.localStorage.setItem('activeRequests', JSON.stringify(updated));
+                          return updated;
+                        });
+                      }}
                       getRequestUser={getRequestUser}
                     />
                   </Box>
@@ -554,7 +788,13 @@ export default function Dashboard({ user, setUser }) {
                       Submit a Feature Request
                     </Typography>
                     <FeatureRequestForm
-                      onSubmit={feature => setActiveRequests(prev => [feature, ...prev])}
+                      onSubmit={feature => {
+                        setActiveRequests(prev => {
+                          const updated = [feature, ...prev];
+                          window.localStorage.setItem('activeRequests', JSON.stringify(updated));
+                          return updated;
+                        });
+                      }}
                       getRequestUser={getRequestUser}
                     />
                   </Box>
@@ -612,7 +852,13 @@ export default function Dashboard({ user, setUser }) {
                                         color="success"
                                         variant="contained"
                                         sx={{ fontWeight: 700, borderRadius: 2, bgcolor: 'success.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'success.dark', color: 'primary.contrastText' } }}
-                                        onClick={() => setActiveRequests(prev => prev.filter(r => (r.id || r) !== (req.id || req)))}
+                                        onClick={() => {
+                                          setActiveRequests(prev => {
+                                            const updated = prev.filter(r => (r.id || r) !== (req.id || req));
+                                            window.localStorage.setItem('activeRequests', JSON.stringify(updated));
+                                            return updated;
+                                          });
+                                        }}
                                       >
                                         Delete
                                       </Button>
@@ -622,8 +868,16 @@ export default function Dashboard({ user, setUser }) {
                                         variant="outlined"
                                         sx={{ fontWeight: 700, borderRadius: 2, borderColor: 'info.main', color: 'info.main', '&:hover': { bgcolor: 'info.main', color: 'primary.contrastText', borderColor: 'info.dark' } }}
                                         onClick={() => {
-                                          setActiveRequests(prev => prev.filter(r => (r.id || r) !== (req.id || req)));
-                                          setResolvedRequests(prev => [req, ...prev]);
+                                          setActiveRequests(prev => {
+                                            const updated = prev.filter(r => (r.id || r) !== (req.id || req));
+                                            window.localStorage.setItem('activeRequests', JSON.stringify(updated));
+                                            return updated;
+                                          });
+                                          setResolvedRequests(prev => {
+                                            const updated = [req, ...prev];
+                                            window.localStorage.setItem('resolvedRequests', JSON.stringify(updated));
+                                            return updated;
+                                          });
                                         }}
                                       >
                                         Mark Resolved
@@ -677,7 +931,13 @@ export default function Dashboard({ user, setUser }) {
                                       color="error"
                                       variant="contained"
                                       sx={{ fontWeight: 700, borderRadius: 2, bgcolor: 'error.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'error.dark', color: 'primary.contrastText' } }}
-                                      onClick={() => setResolvedRequests(prev => prev.filter(r => (r.id || r) !== (req.id || req)))}
+                                      onClick={() => {
+                                        setResolvedRequests(prev => {
+                                          const updated = prev.filter(r => (r.id || r) !== (req.id || req));
+                                          window.localStorage.setItem('resolvedRequests', JSON.stringify(updated));
+                                          return updated;
+                                        });
+                                      }}
                                     >
                                       Delete
                                     </Button>
