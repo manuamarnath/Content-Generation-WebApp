@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+<<<<<<< HEAD
       '/api': 'https://content-generation-webapp-server.onrender.com'
+=======
+      '/api': 'https://content-generation-webapp-server.onrender.com/'
+>>>>>>> 3a6605b (moved logo to public)
     }
   }
 })

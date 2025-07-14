@@ -40,7 +40,7 @@ export default function Auth({ setUser }) {
 
   return (
     <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="auto" height="auto" bgcolor="background.default" sx={{ overflow: 'hidden' }}>
-      <img src="../src/assets/img/mainlogo.png" alt="Logo" style={{ paddingBottom:50, width: 420, maxHeight:250, maxWidth: '90%', margin: '2px 0 2px 0', display: 'block' }} />
+      <img src="/mainlogo.png" alt="Logo" style={{ paddingBottom:50, width: 420, maxHeight:250, maxWidth: '90%', margin: '2px 0 2px 0', display: 'block' }} />
       <Paper elevation={6} sx={{
         p: { xs: 2, sm: 4 },
         minWidth: 340,
