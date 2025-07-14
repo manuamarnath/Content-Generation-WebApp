@@ -22,20 +22,34 @@ export default function Auth({ setUser }) {
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
+  // Use full backend URL in production, relative in dev
+  const API_BASE = import.meta.env.PROD
+    ? 'https://content-generation-webapp-server.onrender.com/api'
+    : '/api';
+
   const handleSubmit = async e => {
     e.preventDefault();
     setMessage('');
-    const url = `/api/auth/${isRegister ? 'register' : 'login'}`;
+    const url = `${API_BASE}/auth/${isRegister ? 'register' : 'login'}`;
     const body = isRegister ? form : { email: form.email, password: form.password };
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    if (!res.ok) return setMessage(data.message || 'Error');
-    if (isRegister) return setMessage('Registered! Awaiting admin approval.');
-    setUser({ ...data.user, token: data.token });
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        return setMessage('Server error: Invalid response');
+      }
+      if (!res.ok) return setMessage(data.message || 'Error');
+      if (isRegister) return setMessage('Registered! Awaiting admin approval.');
+      setUser({ ...data.user, token: data.token });
+    } catch (err) {
+      setMessage('Network error');
+    }
   };
 
   return (
