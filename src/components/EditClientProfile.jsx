@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import { useState } from 'react';
 import { Box, Button, TextField, Typography, Alert, Paper } from '@mui/material';
 
@@ -10,7 +13,7 @@ export default function EditClientProfile({ client, token, onUpdated, onCancel }
   const handleSubmit = async e => {
     e.preventDefault();
     setMessage('');
-    const res = await fetch(`/api/clients/${client._id}`, {
+    const res = await fetch(`${API_BASE}/clients/${client._id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(form)
@@ -26,7 +29,7 @@ export default function EditClientProfile({ client, token, onUpdated, onCancel }
 
   const handleDelete = async () => {
     if (!window.confirm('Delete this client profile?')) return;
-    const res = await fetch(`/api/clients/${client._id}`, {
+    const res = await fetch(`${API_BASE}/clients/${client._id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });

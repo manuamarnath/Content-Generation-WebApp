@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import { useState } from 'react';
 import { Paper, Typography, TextField, Button, Box, Alert, IconButton, Tooltip } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -11,7 +14,7 @@ export default function ClientProfileForm({ token, onCreated }) {
   const handleSubmit = async e => {
     e.preventDefault();
     setMessage('');
-    const res = await fetch('/api/clients', {
+    const res = await fetch(`${API_BASE}/clients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(form)

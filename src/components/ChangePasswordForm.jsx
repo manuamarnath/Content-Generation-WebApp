@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import React, { useState } from 'react';
 import { Box, TextField, Button, Alert } from '@mui/material';
 
@@ -22,7 +25,7 @@ export default function ChangePasswordForm({ user, notify, setUser, buttonProps 
       return;
     }
     setLoading(true);
-    const res = await fetch('/api/auth/change-password', {
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

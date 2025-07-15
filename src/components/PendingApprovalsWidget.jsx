@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import { useEffect, useState } from 'react';
 import { Paper, Typography, CircularProgress, List, ListItem, ListItemText, Button, Box, Badge, Avatar } from '@mui/material';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
@@ -9,7 +12,7 @@ export default function PendingApprovalsWidget({ token, onApproved }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
         setPending(Array.isArray(data) ? data.filter(u => !u.approved) : []);
@@ -22,7 +25,7 @@ export default function PendingApprovalsWidget({ token, onApproved }) {
   }, [token]);
 
   const handleApprove = async (id) => {
-    const res = await fetch('/api/auth/approve', {
+    const res = await fetch(`${API_BASE}/auth/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ userId: id })

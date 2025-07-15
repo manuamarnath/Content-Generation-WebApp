@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import { useState, useEffect } from 'react';
 import { Box, Typography, FormControl, InputLabel, Select, MenuItem, CircularProgress, Paper, List, ListItem, ListItemText } from '@mui/material';
 
@@ -9,7 +12,7 @@ export default function UsageStats({ token }) {
 
   const fetchUsage = () => {
     setLoading(true);
-    fetch('/api/content/usage', {
+    fetch(`${API_BASE}/content/usage`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
