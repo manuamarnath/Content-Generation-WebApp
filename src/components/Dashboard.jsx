@@ -515,7 +515,7 @@ export default function Dashboard({ user, setUser }) {
                     />
                     <Box mt={2} display="flex" gap={2}>
                       <Button onClick={() => handleGenerate(false)} disabled={loading} variant="contained" sx={{ bgcolor: 'secondary.main', color: 'primary.contrastText', fontWeight: 600, '&:hover': { bgcolor: 'secondary.dark', color: 'primary.contrastText' } }}>Generate</Button>
-                      <Button onClick={() => handleGenerate(true)} disabled={loading} variant="outlined" sx={{ borderColor: 'secondary.main', color: 'secondary.main', fontWeight: 600, '&:hover': { bgcolor: 'secondary.main', color: 'primary.contrastText', borderColor: 'secondary.dark' } }}>Regenerate</Button>
+                      {/* <Button onClick={() => handleGenerate(true)} disabled={loading} variant="outlined" sx={{ borderColor: 'secondary.main', color: 'secondary.main', fontWeight: 600, '&:hover': { bgcolor: 'secondary.main', color: 'primary.contrastText', borderColor: 'secondary.dark' } }}>Regenerate</Button> */}
                     </Box>
                     {validation && <Alert severity="warning" sx={{ mt: 2 }}>{validation}</Alert>}
                     {loading && <CircularProgress sx={{ mt: 2 }} />}
@@ -560,12 +560,15 @@ export default function Dashboard({ user, setUser }) {
                           <GeneratedContentDisplay
                             content={content}
                             onSave={handleSave}
+                            onRegenerate={() => handleGenerate(true)}
+                            loading={loading}
                             rows={8}
                           />
                         </Box>
                       </DialogContent>
                       <DialogActions sx={{ justifyContent: 'center', pb: 2, pt: 2, bgcolor: 'background.paper', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
                         <Button onClick={() => setContent('')} variant="outlined" color="primary" sx={{ minWidth: 120, fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                      
                       </DialogActions>
                     </Dialog>
                   </>
@@ -667,6 +670,8 @@ export default function Dashboard({ user, setUser }) {
                           <GeneratedContentDisplay
                             content={content}
                             onSave={handleSave}
+                            onRegenerate={() => handleGenerateAdvanced(true)}
+                            loading={loading}
                             rows={8}
                           />
                         </Box>
