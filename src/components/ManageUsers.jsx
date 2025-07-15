@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import { useState, useEffect } from 'react';
 import { Box, Tabs, Tab, Typography, Paper, Stack, TextField, Button, FormControl, InputLabel, Select, MenuItem, Alert, List, ListItem, ListItemText, CircularProgress, IconButton } from '@mui/material';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
@@ -14,7 +17,7 @@ export default function ManageUsers({ token, notify }) {
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [formError, setFormError] = useState('');
   useEffect(() => {
-    fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(data => {
         setUsers(data);
         setPending(data.filter(u => !u.approved));
@@ -25,7 +28,7 @@ export default function ManageUsers({ token, notify }) {
   // Handlers for user management
   const handleDelete = async id => {
     if (!window.confirm('Delete this user?')) return;
-    const res = await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       setUsers(users.filter(u => u._id !== id));
       notify('User deleted');
@@ -42,7 +45,7 @@ export default function ManageUsers({ token, notify }) {
       setFormError('Enter a valid email address.');
       return;
     }
-    const res = await fetch('/api/users', {
+    const res = await fetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(newUser)
@@ -50,7 +53,7 @@ export default function ManageUsers({ token, notify }) {
     if (res.ok) {
       setNewUser({ name: '', email: '', password: '', role: 'user' });
       notify('User created');
-      fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json()).then(data => {
           setUsers(data);
           setPending(data.filter(u => !u.approved));
@@ -61,7 +64,7 @@ export default function ManageUsers({ token, notify }) {
     }
   };
   const handleApprove = async id => {
-    const res = await fetch('/api/auth/approve', {
+    const res = await fetch(`${API_BASE}/auth/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ userId: id })
@@ -74,7 +77,7 @@ export default function ManageUsers({ token, notify }) {
   };
   const handleReject = async id => {
     if (!window.confirm('Reject this user?')) return;
-    const res = await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       setUsers(users.filter(u => u._id !== id));
       setPending(pending.filter(u => u._id !== id));
@@ -83,7 +86,7 @@ export default function ManageUsers({ token, notify }) {
   };
   const handleBlock = async id => {
     if (!window.confirm('Revoke access and block this user from logging in?')) return;
-    const res = await fetch(`/api/users/${id}/block`, {
+    const res = await fetch(`${API_BASE}/users/${id}/block`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -97,7 +100,7 @@ export default function ManageUsers({ token, notify }) {
   };
   const handleUnblock = async id => {
     if (!window.confirm('Unblock this user and restore login access?')) return;
-    const res = await fetch(`/api/users/${id}/unblock`, {
+    const res = await fetch(`${API_BASE}/users/${id}/unblock`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });

@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 
 import { useEffect, useState } from 'react';
 import { Paper, Typography, CircularProgress, Box } from '@mui/material';
@@ -11,8 +14,8 @@ export default function ClientsUsersBarWidget({ token }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      fetch('/api/clients', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+      fetch(`${API_BASE}/clients`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
     ])
       .then(([clients, users]) => {
         setData({

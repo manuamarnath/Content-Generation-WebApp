@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 import { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -50,7 +53,7 @@ export default function Dashboard({ user, setUser }) {
     setMessage(isRegenerate ? 'Regenerating...' : 'Generating...');
     setContent('');
     try {
-      await fetch('/api/content/track-usage', {
+      await fetch(`${API_BASE}/content/track-usage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
         body: JSON.stringify({ type: isRegenerate ? 'regeneration' : 'generation' })
@@ -59,7 +62,7 @@ export default function Dashboard({ user, setUser }) {
         .replace(/mention topic/gi, advForm.topic)
         .replace(/500-word|\d+-word/gi, `${advForm.words}-word`);
       // Send all required fields to backend
-      const res = await fetch('/api/content/generate', {
+      const res = await fetch(`${API_BASE}/content/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
         body: JSON.stringify({
@@ -159,14 +162,14 @@ export default function Dashboard({ user, setUser }) {
   });
 
   const refreshClients = () => {
-    fetch('/api/clients', { headers: { Authorization: `Bearer ${user.token}` } })
+    fetch(`${API_BASE}/clients`, { headers: { Authorization: `Bearer ${user.token}` } })
       .then(r => r.json()).then(setClients);
     setEditingClient(null);
   };
 
   // Add a function to refresh logs
   const refreshLogs = () => {
-    fetch('/api/content/logs', { headers: { Authorization: `Bearer ${user.token}` } })
+    fetch(`${API_BASE}/content/logs`, { headers: { Authorization: `Bearer ${user.token}` } })
       .then(r => r.json()).then(setLogs);
   };
 
@@ -179,7 +182,7 @@ export default function Dashboard({ user, setUser }) {
 
   useEffect(() => {
     if (user.role === 'superadmin') {
-      fetch('/api/users', { headers: { Authorization: `Bearer ${user.token}` } })
+      fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${user.token}` } })
         .then(r => r.json()).then(data => {
           setPendingCount(data.filter(u => !u.approved).length);
           setPendingUsers(data.filter(u => !u.approved));
@@ -194,7 +197,7 @@ export default function Dashboard({ user, setUser }) {
 
   const handleGenerate = async (isRegenerate = false) => {
     // Track usage immediately
-    fetch('/api/content/track-usage', {
+    fetch(`${API_BASE}/content/track-usage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
       body: JSON.stringify({ type: isRegenerate ? 'regeneration' : 'generation' })
@@ -207,7 +210,7 @@ export default function Dashboard({ user, setUser }) {
     setLoading(true);
     setMessage(isRegenerate ? 'Regenerating...' : 'Generating...');
     setContent('');
-    const res = await fetch('/api/content/generate', {
+    const res = await fetch(`${API_BASE}/content/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
       body: JSON.stringify({
@@ -230,7 +233,7 @@ export default function Dashboard({ user, setUser }) {
   const handleSave = async () => {
     setLoading(true);
     setMessage('Saving...');
-    const res = await fetch('/api/content/save', {
+    const res = await fetch(`${API_BASE}/content/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
       body: JSON.stringify({
@@ -258,7 +261,7 @@ export default function Dashboard({ user, setUser }) {
   const notifOpen = Boolean(notifAnchor);
 
   const handleApproveFromNotif = async (id) => {
-    const res = await fetch('/api/auth/approve', {
+    const res = await fetch(`${API_BASE}/auth/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
       body: JSON.stringify({ userId: id })
@@ -274,7 +277,7 @@ export default function Dashboard({ user, setUser }) {
   const handleDeleteLog = async (logId) => {
     if (!window.confirm('Delete this log entry?')) return;
     setLoading(true);
-    const res = await fetch(`/api/content/logs/${logId}`, {
+    const res = await fetch(`${API_BASE}/content/logs/${logId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${user.token}` }
     });

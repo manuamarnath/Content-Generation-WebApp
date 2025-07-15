@@ -1,3 +1,6 @@
+const API_BASE = import.meta.env.PROD
+  ? 'https://content-generation-webapp-server.onrender.com/api'
+  : '/api';
 
 import { useState, useEffect } from 'react';
 import { Paper, Typography, CircularProgress } from '@mui/material';
@@ -10,7 +13,7 @@ export default function UsageWidget({ token }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/content/usage?by=day', {
+    fetch(`${API_BASE}/content/usage?by=day`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
