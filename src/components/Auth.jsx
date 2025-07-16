@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Paper, Alert } from '@mui/material';
+import { Box, Button, TextField, Typography, Paper, Alert, CircularProgress } from '@mui/material';
 
 export default function Auth({ setUser }) {
   useEffect(() => {
@@ -17,8 +17,11 @@ export default function Auth({ setUser }) {
   }, []);
 
   const [isRegister, setIsRegister] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [message, setMessage] = useState('');
+  const [severity, setSeverity] = useState('error');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -30,6 +33,41 @@ export default function Auth({ setUser }) {
   const handleSubmit = async e => {
     e.preventDefault();
     setMessage('');
+    setLoading(true);
+    
+    if (isForgotPassword) {
+      if (!form.email) {
+        setMessage('Please enter your email');
+        setSeverity('error');
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email })
+        });
+        
+        const data = await res.json();
+        setLoading(false);
+        
+        if (res.ok) {
+          setMessage(data.message);
+          setSeverity('success');
+        } else {
+          setMessage(data.message || 'Error sending reset link');
+          setSeverity('error');
+        }
+      } catch (err) {
+        setMessage('Network error');
+        setSeverity('error');
+        setLoading(false);
+      }
+      return;
+    }
+    
     const url = `${API_BASE}/auth/${isRegister ? 'register' : 'login'}`;
     const body = isRegister ? form : { email: form.email, password: form.password };
     try {
@@ -42,13 +80,24 @@ export default function Auth({ setUser }) {
       try {
         data = await res.json();
       } catch (err) {
+        setLoading(false);
         return setMessage('Server error: Invalid response');
       }
-      if (!res.ok) return setMessage(data.message || 'Error');
-      if (isRegister) return setMessage('Registered! Awaiting admin approval.');
+      setLoading(false);
+      if (!res.ok) {
+        setSeverity('error');
+        return setMessage(data.message || 'Error');
+      }
+      if (isRegister) {
+        setMessage('Registered! Awaiting admin approval.');
+        setSeverity('info');
+        return;
+      }
       setUser({ ...data.user, token: data.token });
     } catch (err) {
+      setLoading(false);
       setMessage('Network error');
+      setSeverity('error');
     }
   };
 
@@ -71,10 +120,10 @@ export default function Auth({ setUser }) {
         alignItems: 'center',
       }}>
         <Typography variant="h6" mb={2} sx={{ color: '#f15a24', fontWeight: 700, textAlign: 'center', letterSpacing: 0.5 }}>
-          {isRegister ? 'Register' : 'Login'}
+          {isForgotPassword ? 'Forgot Password' : isRegister ? 'Register' : 'Login'}
         </Typography>
-        <form onSubmit={handleSubmit}>
-          {isRegister && (
+        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+          {isRegister && !isForgotPassword && (
             <TextField name="name" label="Name" value={form.name} onChange={handleChange} fullWidth margin="normal" required
               InputLabelProps={{ style: { color: '#cbd5e1' } }}
               InputProps={{ style: { color: '#fff', background: '#222a', borderRadius: 8 } }}
@@ -84,18 +133,109 @@ export default function Auth({ setUser }) {
             InputLabelProps={{ style: { color: '#cbd5e1' } }}
             InputProps={{ style: { color: '#fff', background: '#222a', borderRadius: 8 } }}
           />
-          <TextField name="password" label="Password" type="password" value={form.password} onChange={handleChange} fullWidth margin="normal" required
-            InputLabelProps={{ style: { color: '#cbd5e1' } }}
-            InputProps={{ style: { color: '#fff', background: '#222a', borderRadius: 8 } }}
-          />
-          <Button type="submit" variant="contained" fullWidth sx={{ mt: 2, fontWeight: 700, fontSize: 18, borderRadius: 2, py: 1.2, bgcolor: '#f15a24', color: 'primary.contrastText', '&:hover': { bgcolor: '#c94c1c', color: 'primary.contrastText' } }}>
-            {isRegister ? 'Register' : 'Login'}
+          {!isForgotPassword && (
+            <TextField name="password" label="Password" type="password" value={form.password} onChange={handleChange} fullWidth margin="normal" required
+              InputLabelProps={{ style: { color: '#cbd5e1' } }}
+              InputProps={{ style: { color: '#fff', background: '#222a', borderRadius: 8 } }}
+            />
+          )}
+          {!isRegister && !isForgotPassword && (
+            <Box sx={{ width: '100%', textAlign: 'right', mt: 1 }}>
+              <Button 
+                onClick={() => {
+                  setIsForgotPassword(true);
+                  setMessage('');
+                  setForm({ ...form, password: '' });
+                }} 
+                sx={{ 
+                  fontSize: 14, 
+                  color: '#cbd5e1', 
+                  textTransform: 'none', 
+                  '&:hover': { color: '#f15a24' }
+                }}
+              >
+                Forgot Password?
+              </Button>
+            </Box>
+          )}
+          <Button 
+            type="submit" 
+            variant="contained" 
+            fullWidth 
+            disabled={loading}
+            sx={{ 
+              mt: 2, 
+              fontWeight: 700, 
+              fontSize: 18, 
+              borderRadius: 2, 
+              py: 1.2, 
+              bgcolor: '#f15a24', 
+              color: 'primary.contrastText', 
+              '&:hover': { 
+                bgcolor: '#c94c1c', 
+                color: 'primary.contrastText' 
+              } 
+            }}
+          >
+            {loading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : (
+              isForgotPassword ? 'Send Reset Link' : isRegister ? 'Register' : 'Login'
+            )}
           </Button>
         </form>
-        <Button onClick={() => { setIsRegister(r => !r); setMessage(''); }} fullWidth sx={{ mt: 2, color: '#f15a24', fontWeight: 700, textTransform: 'none', fontSize: 16, '&:hover': { color: '#c94c1c' } }}>
-          {isRegister ? 'Have an account? Login' : 'No account? Register'}
-        </Button>
-        {message && <Alert severity={isRegister ? 'info' : 'error'} sx={{ mt: 2, fontWeight: 600, borderRadius: 2 }}>{message}</Alert>}
+        
+        {isForgotPassword ? (
+          <Button 
+            onClick={() => { 
+              setIsForgotPassword(false); 
+              setMessage(''); 
+            }} 
+            fullWidth 
+            sx={{ 
+              mt: 2, 
+              color: '#f15a24', 
+              fontWeight: 700, 
+              textTransform: 'none', 
+              fontSize: 16, 
+              '&:hover': { color: '#c94c1c' } 
+            }}
+          >
+            Back to Login
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => { 
+              setIsRegister(r => !r); 
+              setMessage(''); 
+            }} 
+            fullWidth 
+            sx={{ 
+              mt: 2, 
+              color: '#f15a24', 
+              fontWeight: 700, 
+              textTransform: 'none', 
+              fontSize: 16, 
+              '&:hover': { color: '#c94c1c' } 
+            }}
+          >
+            {isRegister ? 'Have an account? Login' : 'No account? Register'}
+          </Button>
+        )}
+        
+        {message && (
+          <Alert 
+            severity={severity} 
+            sx={{ 
+              mt: 2, 
+              fontWeight: 600, 
+              borderRadius: 2,
+              width: '100%'
+            }}
+          >
+            {message}
+          </Alert>
+        )}
       </Paper>
     </Box>
   );
