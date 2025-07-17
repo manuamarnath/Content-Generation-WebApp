@@ -32,6 +32,10 @@ export default function ResetPassword() {
     `;
     document.head.appendChild(style);
     
+    // Log URL parameters for debugging
+    console.log('Current URL:', window.location.href);
+    console.log('Token from params:', token);
+    
     // Verify token presence
     if (!token) {
       setTokenValid(false);
@@ -39,12 +43,26 @@ export default function ResetPassword() {
       setSeverity('error');
     } else {
       console.log(`Reset password page loaded with token: ${token.substring(0, 10)}...`);
+      
+      // Check token validity against backend (optional)
+      fetch(`${API_BASE}/auth/verify-token/${token}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.valid) {
+            setTokenValid(false);
+            setMessage('This reset link is invalid or has expired.');
+            setSeverity('error');
+          }
+        })
+        .catch(err => {
+          console.error('Error verifying token:', err);
+        });
     }
     
     return () => {
       document.head.removeChild(style);
     };
-  }, [token]);
+  }, [token, API_BASE]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
