@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { Box, Button, TextField, Typography, Paper, Alert, CircularProgress } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 
+// Define API_BASE to match the backend API URL
 const API_BASE = import.meta.env.PROD
   ? 'https://content-generation-webapp-server.onrender.com/api'
   : '/api';
+
+// Log current environment and API_BASE for debugging
+console.log(`Environment: ${import.meta.env.MODE}, API_BASE: ${API_BASE}`);
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -27,10 +31,20 @@ export default function ResetPassword() {
       }
     `;
     document.head.appendChild(style);
+    
+    // Verify token presence
+    if (!token) {
+      setTokenValid(false);
+      setMessage('Invalid reset link. Token is missing.');
+      setSeverity('error');
+    } else {
+      console.log(`Reset password page loaded with token: ${token.substring(0, 10)}...`);
+    }
+    
     return () => {
       document.head.removeChild(style);
     };
-  }, []);
+  }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,13 +72,19 @@ export default function ResetPassword() {
     setLoading(true);
     
     try {
-      const res = await fetch(`${API_BASE}/auth/reset-password/${token}`, {
+      console.log(`Submitting password reset with token: ${token.substring(0, 10)}...`);
+      
+      const resetUrl = `${API_BASE}/auth/reset-password/${token}`;
+      console.log(`API endpoint: ${resetUrl}`);
+      
+      const res = await fetch(resetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newPassword: password })
       });
       
       const data = await res.json();
+      console.log('Response received:', data);
       setLoading(false);
       
       if (res.ok) {
@@ -76,11 +96,14 @@ export default function ResetPassword() {
       } else {
         setSeverity('error');
         setMessage(data.message || 'Failed to reset password');
+        console.error('Reset failed:', data.message);
+        
         if (data.message === 'Invalid or expired token') {
           setTokenValid(false);
         }
       }
     } catch (err) {
+      console.error('Reset password error:', err);
       setLoading(false);
       setSeverity('error');
       setMessage('Network error. Please try again.');
